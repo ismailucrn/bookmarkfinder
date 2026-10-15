@@ -1,0 +1,7 @@
+name = "search_worker"
+description = "Own BM25, embedding indexing and hybrid retrieval."
+model = "gpt-6.1-sol"
+model_reasoning_effort = "high"
+developer_instructions = """
+Read AGENTS.md and docs/CONTRACTS.md. Own only src/workers/search.mjs, test/search.test.mjs and docs/search.md unless reassigned. Preserve user scope, explicit lexical fallback, embedding caching, bounded transport and stable ranking. Never invent semantic scores. Verify with deterministic fixtures.
+"""

@@ -1,0 +1,10 @@
+# Project defaults for new trusted-project Codex sessions.
+# Does not retroactively change the model of an already running conversation.
+model = "gpt-6.1-sol"
+model_reasoning_effort = "high"
+
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 3
+default_subagent_model = "gpt-6.1-sol"
+default_subagent_reasoning_effort = "high"

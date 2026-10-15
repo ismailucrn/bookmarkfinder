@@ -1,0 +1,22 @@
+{
+  "name": "recall-agent-system",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local personal saved-resource search with an orchestrator, ingestion/search/Jev workers",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/cli.mjs serve",
+    "serve:demo": "node --env-file-if-exists=.env src/cli.mjs serve --demo",
+    "demo": "node src/cli.mjs demo",
+    "search": "node --env-file-if-exists=.env src/cli.mjs search",
+    "sync": "node --env-file-if-exists=.env src/cli.mjs sync",
+    "index": "node --env-file-if-exists=.env src/cli.mjs index",
+    "test": "node --test test/*.test.mjs",
+    "check": "node --check src/cli.mjs && node --check src/server.mjs && node --check src/orchestrator.mjs",
+    "setup": "node scripts/bootstrap.mjs",
+    "package": ".venv/bin/python scripts/package.py"
+  }
+}

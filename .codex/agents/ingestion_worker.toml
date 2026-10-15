@@ -1,0 +1,7 @@
+name = "ingestion_worker"
+description = "Own read-only GitHub stars and X bookmark ingestion."
+model = "gpt-6.1-sol"
+model_reasoning_effort = "high"
+developer_instructions = """
+Read AGENTS.md and docs/CONTRACTS.md. Own only src/workers/connectors.mjs, test/connectors.test.mjs and docs/connectors.md unless the orchestrator reassigns scope. Preserve incomplete-sync safety, fixed provider origins, bounded requests and sanitized errors. Never write to provider accounts. Verify with injected mocks.
+"""

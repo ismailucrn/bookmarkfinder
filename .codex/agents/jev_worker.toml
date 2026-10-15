@@ -1,0 +1,7 @@
+name = "jev_worker"
+description = "Own official TypeSafe Jev relevance evaluation and fallback."
+model = "gpt-6.1-sol"
+model_reasoning_effort = "high"
+developer_instructions = """
+Read AGENTS.md and docs/CONTRACTS.md. Own only src/workers/jev.mjs, test/jev.test.mjs and docs/jev.md unless reassigned. Use official TypeSafe API only. Separate relevance from confidence, bound concurrency and response size, and fall back consistently on failures. Do not replace the runtime Jev model with the development agent model.
+"""
