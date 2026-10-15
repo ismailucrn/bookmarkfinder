@@ -130,4 +130,4 @@ This runs `.venv/bin/python scripts/package.py` and creates `dist/bookmarkfinder
 
 ## License
 
-A license has not been selected yet.
+[MIT](LICENSE) © 2026 ismailucrn.
