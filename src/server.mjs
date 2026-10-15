@@ -35,9 +35,9 @@ export function makeServer({ orchestrator }) {
       }
       const url = new URL(req.url, 'http://127.0.0.1');
       const path = url.pathname;
-      if (req.method === 'GET' && path === '/api/health') return send(res, 200, { status: 'ok', service: 'recall', version: '0.1.0' });
+      if (req.method === 'GET' && path === '/api/health') return send(res, 200, { status: 'ok', service: 'bookmarkfinder', version: '0.1.0' });
       if (req.method === 'GET' && path === '/') return send(res, 200, {
-        service: 'Recall', description: 'Orchestrator + ingestion/search/Jev workers; yerel backend MVP.',
+        service: 'Bookmark Finder', description: 'Orchestrator + ingestion/search/Jev workers; yerel backend MVP.',
         endpoints: ['GET /api/status', 'POST /api/search', 'POST /api/sync', 'POST /api/index', 'GET /api/jobs/:id', 'POST /api/import', 'DELETE /api/entries'],
         requestHeader: 'X-Recall-Client: local', docs: 'README.md',
       });

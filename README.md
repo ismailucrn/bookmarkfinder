@@ -1,126 +1,112 @@
-# Recall — kişisel kayıt arama sistemi
+# Bookmark Finder
 
-GitHub yıldızları ve X yer imleri üzerinde arama yapan, **bir orchestrator + üç worker** içeren yerel backend MVP. Geliştirme de aynı iş bölümüyle yapıldı: ingestion, search ve Jev workerları ayrı agentlar tarafından yazılıp çapraz incelendi; ana agent entegrasyon ve testleri yönetti.
+Search your GitHub stars and X bookmarks from a local CLI or HTTP API. Bookmark Finder imports saved items into SQLite, retrieves candidates with BM25 and optional embedding search, then optionally reranks them with Jev.
 
-**Güncel aşama ve sohbetler arası devir:** [STATUS.md](STATUS.md). Codex yerel projesinin kökü, bu README'nin bulunduğu ana proje klasörüdür.
+This is a **local backend MVP**. It has no web frontend, OAuth connection or token-refresh UI, scheduled sync, or authenticated multiuser server. Live provider access, multilingual search quality, latency, and cost have not yet been validated. See [STATUS.md](STATUS.md) for the current stage.
 
-**Çalışanlar:** SQLite kayıt, GitHub/X okuma entegrasyonları, BM25 arama, yapılandırılabilir embedding + cosine/RRF arama, resmî Jev API ile yeniden sıralama, iş kuyruğu ve worker izleri, CLI ve yerel HTTP API.
+## Quick start
 
-**Henüz yapılmayanlar:** web arayüzü, hesap bağlama ekranı/OAuth akışı ve token yenileme, çok kullanıcılı sunucu kimlik doğrulaması, zamanlanmış senkronizasyon, bağlantıdaki sayfa/thread içeriklerinin toplanması. Gerçek hesaplarla API erişimi, maliyet, Türkçe–İngilizce arama kalitesi ölçülmedi. Bu sürüm üretime açık SaaS değildir.
+Requires **Node.js 24 or newer**. The backend uses ES modules and Node built-ins only; no npm packages, Docker, or separate database server are required. Python 3 is used for setup and source packaging only.
 
-## Hemen çalıştır
-
-Node.js **24 veya üzeri** ve ilk kurulum/paketleme için Python 3 gerekli. Backend Node.js ile çalışır; `.venv` yalnızca Python paketleme yardımcısı içindir. Harici npm bağımlılığı, Docker ya da veritabanı kurulumu gerekmiyor. Komutları bu README'nin bulunduğu klasörde çalıştır.
+Run these commands from the repository root:
 
 ```sh
 npm run setup
-```
-
-Kurulum eksikse `.env.example` dosyasından `.env` oluşturur ve `.venv` hazırlar; tekrar çalıştırıldığında mevcut `.env` dosyasını korur. Python ortamını elle etkinleştirmek gerekmez.
-
-```sh
 npm run demo
 npm run search -- "React analytics" --demo
 npm run serve:demo
 ```
 
-`demo` komutu bellekteki 5 açıkça örnek olarak işaretlenmiş kayıtla PDF araması yapar. `--demo` modunda gerçek API anahtarları **kullanılmaz**; anlamsal arama ve Jev kapalıdır. Bu bir model performans demosu değildir. Sunuculu demo `data/demo.sqlite` kullanır; gerçek kayıtların veritabanından ayrıdır.
+Setup creates a local `.env` from `.env.example` if absent and prepares `.venv`. It preserves an existing `.env`. The Python environment is only for the packaging helper; you do not need to activate it to run the Node backend.
 
-API: `http://127.0.0.1:4317`. Sunucu yalnızca loopback arayüzüne bağlanır. Örneğin ayrı bir terminalden:
+Demo mode uses five labeled sample entries, **lexical search only**, and no external API calls. It does not demonstrate embedding or Jev model quality. `npm run demo` uses an in-memory database; `npm run serve:demo` uses the separate `data/demo.sqlite` file.
+
+With the demo server running, search from another terminal:
 
 ```sh
 curl http://127.0.0.1:4317/api/search \
   -H 'X-Recall-Client: local' \
   -H 'Content-Type: application/json' \
-  -d '{"query":"PDF tablo çıkarma Python","limit":5}'
+  -d '{"query":"PDF table extraction Python","limit":5}'
 ```
 
-Yanıtta orijinal kaynak bağlantıları, içerik kesiti, puanlar, kullanılan modlar, uyarılar ve worker süreleri bulunur. Anahtar yokken `relevanceScore` ve `confidence` null kalır; Jev kullanılmış gibi gösterilmez. `excerpt` kaynak içeriğin ilk bölümüdür; otomatik üretilmiş eşleşme gerekçesi değildir.
+The API returns source links, excerpts, scores, modes, warnings, and worker timings. Without Jev, `relevanceScore` and `confidence` are `null`. Excerpts are source text, not generated match explanations. Stop the server with `Ctrl+C`.
 
-## Gerçek kayıtları bağlama
+## Search your own saved items
 
-Önce `npm run setup` çalıştır. Ardından oluşan `.env` dosyasını yerel editöründe düzenle.
+Run setup, then edit `.env` locally. Never put credentials in chat, source files, or Git. `.env`, `.venv`, and `data/` are excluded from Git and source packages.
 
-Anahtarları `.env` dosyasına **yerel olarak** ekle; chate veya Git'e koyma. `.env` ve `data/` ignore ediliyor. Yer imleri ve içerikleri yerel SQLite'ta tutulur; disk şifrelemesi uygulama tarafından sağlanmaz.
-
-| Değişken | İşlev |
+| Variable | Purpose |
 | --- | --- |
-| `GITHUB_TOKEN` | Oturum açmış kullanıcının yıldızlarını okuyan token. Fine-grained token için Starring user permission: read; ek README erişimi sağlayıcının repo izinlerine bağlıdır. |
-| `X_ACCESS_TOKEN` | Kullanıcı bağlamlı OAuth token. `bookmark.read`, `tweet.read`, `users.read`; uygulamanın X erişim hakkı ayrıca gerekir. |
-| `X_USER_ID` | Aynı X kullanıcısının sayısal hesap kimliği. |
-| `JEV_API_KEY` | Resmî TypeSafe API anahtarı. |
-| `JEV_MODEL` | Varsayılan `jev-latest`; karşılaştırmalı ölçümde hesabın desteklediği sabit sürümü seç. |
-| `EMBEDDING_BASE_URL` | Embeddings uyumlu sağlayıcının `/v1` içeren temel URL'si. HTTPS; localhost için HTTP kabul edilir. |
-| `EMBEDDING_MODEL` | Sağlayıcının model kimliği. Türkçe/İngilizce destekli model seçilmeli ve kendi verinle ölçülmeli. |
-| `EMBEDDING_API_KEY` | Embedding sağlayıcısının anahtarı; yerel anahtarsız sunucuda boş bırakılabilir. |
-| `RECALL_DB`, `RECALL_PORT` | Gerçek veritabanı dosyası ve yerel port; varsayılan `./data/recall.sqlite`, `4317`. |
+| `GITHUB_TOKEN` | Read access to the authenticated user's stars. For a fine-grained token, use the Starring user permission with read access; README access depends on repository permissions. |
+| `X_ACCESS_TOKEN` | User-context OAuth token with `bookmark.read`, `tweet.read`, and `users.read`; the app also needs X API access. |
+| `X_USER_ID` | Numeric account ID for the same X user. |
+| `JEV_API_KEY` | Official TypeSafe API key for optional Jev reranking. |
+| `JEV_MODEL` | Jev model ID; defaults to `jev-latest`. |
+| `EMBEDDING_BASE_URL` | Optional embeddings-compatible provider base URL, including `/v1`. HTTPS is required except on loopback. |
+| `EMBEDDING_MODEL` | Embedding model ID; required with the embedding base URL. |
+| `EMBEDDING_API_KEY` | Embedding provider key; may be empty for a local server that needs no key. |
+| `RECALL_DB` | Database path; defaults to `./data/recall.sqlite`. |
+| `RECALL_PORT` | Local API port; defaults to `4317`. |
+
+The `RECALL_*` environment variables and `X-Recall-Client` header retain their existing names for compatibility.
 
 ```sh
 npm run sync -- github
 npm run sync -- x
 npm run index
-npm run search -- "kendi sunucumda çalıştıracağım analytics"
+npm run search -- "self-hosted analytics"
 npm start
 ```
 
-Senkronizasyon mevcut kayıtlara embedding üretir. Embedding yapılandırmasını sonradan eklersen `npm run index` çalıştır. Değişmeyen içeriğin embedding'i tekrar üretilmez; her soruda arşivin tamamı yeniden modele gönderilmez. Model/sağlayıcı değiştirirken farklı bir model kimliği veya temiz embedding verisi kullan.
+Sync only the providers you configure. Sync indexes imported entries; run `npm run index` after adding embedding settings to existing data. Unchanged content reuses cached embeddings. When changing providers or models, use a distinct model ID or clear the old embedding data.
 
-Jev'e her aday için sorgu, başlık ve en fazla 12.000 karakter içerik gönderilir; embedding sağlayıcısına indekslenecek metin ve arama sorgusu gönderilir. Yer imleri özel olabilir; seçtiğin sağlayıcının veri işleme koşullarını buna göre değerlendir. Kaynak bağlantıları otomatik açılmaz ve bağlantılı web sayfaları indirilmez.
+Import is read-only. Incomplete or failed sync preserves earlier entries; a complete sync replaces that source's snapshot. Imports are bounded to 10 pages and 1,000 entries per source. GitHub README enrichment covers at most the newest 100 repositories, with a 64 KiB limit per README. Linked pages and post threads are not downloaded. See [connector behavior](docs/connectors.md).
 
-Aktarım sınırları: kaynak başına 10 sayfa / en fazla 1.000 kayıt, GitHub'da en yeni 100 repo için README, README başına 64 KiB. Eksik aktarımda önceki kayıtlar silinmez. Tamamlanan aktarım kaynak snapshot'ını değiştirir. GitHub sayfalama değişimleri için ek kontrol vardır; üçüncü taraf API'ler atomik snapshot sağlamadığı için eşzamanlı değişikliklere karşı mutlak garanti yoktur. Ayrıntılar: [connectors](docs/connectors.md).
+Saved content stays in local SQLite, without application-level disk encryption. If enabled, the embedding provider receives indexed text and search queries; Jev receives each candidate's query, title, and up to 12,000 characters of content. Configure providers whose data handling suits your saved items.
 
-## Agent ve çalışma mimarisi
+## How it works
 
 ```mermaid
 flowchart TD
-  CLI[CLI / yerel API] --> O[Orchestrator]
+  A[CLI / local HTTP API] --> O[Orchestrator]
   O --> I[Ingestion worker: GitHub / X]
-  I --> E[Search worker: indeksleme]
-  E --> DB[(Kullanıcıya göre SQLite)]
-  O --> S[Search worker: BM25 + isteğe bağlı cosine/RRF]
+  I --> E[Search worker: indexing]
+  E --> DB[(User-scoped SQLite)]
+  O --> S[Search worker: BM25 + optional embeddings / RRF]
   DB --> S
-  S --> J[Jev worker: aday uygunluk puanı]
-  J --> R[Sıralanmış sonuçlar + mod/uyarı/trace]
+  S --> J[Jev worker: optional reranking]
+  J --> R[Results + modes / warnings / traces]
 ```
 
-Runtime orchestrator, doğrulanmış kodla iş yönlendiren bir bileşendir; her adım için ek bir LLM çağrısı yapmaz. Workerlar aynı Node sürecinde ayrı sözleşmelerle çalışır; bağımsız konteynerler değildir. Jev puanlama sırasında model kullanır, search worker yapılandırıldıysa embedding servisini çağırır. İşlem yürütme serbest dolaşan otonom agent davranışı içermez.
+The orchestrator and three workers run in one Node process. The orchestrator routes jobs through explicit code contracts; it does not make an extra LLM call to plan each request.
 
-- **Orchestrator:** iş kuyruğu, kullanıcı kapsamı, aynı kullanıcıdaki yazmaları sıralama, aynı işi birleştirme, aşama izleri ve başarısız iş durumu. İndeks/aktarım işleri kalıcı kaydedilir; kapanırken kesilen işler sonraki açılışta `failed` olur, kendiliğinden tekrarlanmaz.
-- **Ingestion worker:** sayfalama, sınırlar, README zenginleştirme, kısmi aktarım işareti. Hiçbir sağlayıcıda yazma işlemi yoktur.
-- **Search worker:** BM25; isteğe bağlı gerçek embedding, cosine ve reciprocal rank fusion. İlk 40 adayı getirir. Servis yokken görünür kelime araması modu.
-- **Jev worker:** her adayı dört açıklamalı seviyede değerlendirir; `score / 3` uygunluk puanıdır. `confidence` sıralama ölçütü değildir. Herhangi bir adayın değerlendirmesi başarısızsa sonuç kümesinin tamamı retrieval sırasına döner.
+- **Ingestion:** bounded pagination, README enrichment, and incomplete snapshot detection.
+- **Search:** BM25, optional embedding cosine similarity, and reciprocal rank fusion (RRF). Retrieves up to 40 candidates with explicit lexical fallback when semantic search is unavailable.
+- **Jev:** official TypeSafe Score API, bounded concurrency, and four relevance levels. Any candidate evaluation failure returns the whole result set to retrieval order with a warning.
 
-En fazla 2 eşzamanlı arama; her birinde en fazla 4 paralel Jev isteği. Başlangıçta 40 adaya kadar değerlendirme yapılır. Bu sayılar ürün verisiyle gecikme/maliyet ölçülerek ayarlanmalıdır. `score / 3` gerçek hayattaki doğru kayıt olasılığı değildir; kullanıcıya yüzde doğruluk olarak sunulmamalıdır.
+Jev relevance is `score / 3`, not a probability of correctness. Confidence is separate and never used as relevance. Retrieval scores are ranking signals, not probabilities. Up to two searches run concurrently, with up to four parallel Jev requests per search.
 
-Yeni geliştirme alt agentları kullanıcının tercihiyle **`gpt-6.1-sol`, `high`** ayarıyla başlatılır. Bu, uygulamanın model ayarı değildir: runtime uygunluk değerlendirmesi **Jev** kullanır, embedding modeli ayrıca yapılandırılır. Önceden tamamlanan agent çalışmalarının model ayarları geriye dönük değiştirilmiş sayılmaz.
+Data and jobs are user-scoped. The HTTP API uses a fixed local principal and binds only to `127.0.0.1`; the local-client header is not multiuser authentication. Remote hosting requires authentication and authorization first. Interrupted persistent jobs are marked failed after restart and are not automatically retried.
 
-Geliştirme agentlarının görevleri ve dosya sahipliği [AGENTS.md](AGENTS.md) içinde, arayüzler [CONTRACTS.md](docs/CONTRACTS.md) içinde. Worker ayrıntıları: [search](docs/search.md), [Jev](docs/jev.md).
+Worker details: [connectors](docs/connectors.md), [search](docs/search.md), [Jev](docs/jev.md), and [contracts](docs/CONTRACTS.md).
 
 ## HTTP API
 
-Özel veriye erişen tüm uçlarda `X-Recall-Client: local` başlığı gerekli. JSON POST'larda `Content-Type: application/json` kullan. API kullanıcı kimliğini/anahtarları HTTP gövdesinden almaz; tek yerel principal `local` olarak sabittir. İç store kullanıcı kapsamını destekler ama bu, kimlik doğrulamalı çok kullanıcılı ürün değildir.
+Private-data endpoints require `X-Recall-Client: local`. JSON POST requests also require `Content-Type: application/json`. Credentials and user identity come from local configuration, not request bodies.
 
-| Uç | Gövde / işlev |
+| Endpoint | Request / result |
 | --- | --- |
-| `GET /api/health` | Liveness; özel veri içermez. |
-| `GET /api/status` | Kayıt sayıları, yapılandırılmış workerlar, son işler; anahtarları döndürmez. |
-| `POST /api/search` | `{"query":"...","source":"github","limit":10}`; source isteğe bağlı. |
-| `POST /api/sync` | `{"source":"github"}` veya `x`; 202 ile job kimliği. |
-| `POST /api/index` | `{}`; 202 ile job kimliği. |
-| `GET /api/jobs/:id` | İş durumu, izler, sonuç veya temizlenmiş hata. |
-| `POST /api/import` | `{"entries":[...]}`; sözleşmeye uygun manuel JSON kayıtları. |
-| `DELETE /api/entries?source=x` | Yerel kaynak kayıtlarını siler; kaynak parametresi olmadan bütün yerel kayıtları siler. Sağlayıcıdaki yıldız/yer imini değiştirmez. |
+| `GET /api/health` | Liveness, without private data. |
+| `GET /api/status` | Entry counts, configured workers, and recent jobs. |
+| `POST /api/search` | `{"query":"...","source":"github","limit":10}`; source is optional. |
+| `POST /api/sync` | `{"source":"github"}` or `{"source":"x"}`; returns a job ID with HTTP 202. |
+| `POST /api/index` | `{}`; returns a job ID with HTTP 202. |
+| `GET /api/jobs/:id` | Job state, traces, result, or sanitized error. |
+| `POST /api/import` | `{"entries":[...]}` matching the entry contract. |
+| `DELETE /api/entries?source=x` | Deletes local entries for that source; omit source to delete all local entries. Does not change provider bookmarks or stars. |
 
-Örnek senkronizasyon:
-
-```sh
-curl http://127.0.0.1:4317/api/sync \
-  -H 'X-Recall-Client: local' -H 'Content-Type: application/json' \
-  -d '{"source":"github"}'
-# Dönen id ile /api/jobs/ID çağrılır.
-```
-
-## Doğrulama ve sonraki adım
+## Development and verification
 
 ```sh
 npm test
@@ -128,30 +114,20 @@ npm run check
 npm run demo
 ```
 
-Testler gerçek yerel HTTP API ve SQLite işlemlerini kullanır; harici GitHub/X/Jev/embedding istekleri kontrollü sahte yanıtlarla sınanır. Canlı sağlayıcı sonuçları veya arama kalitesi hakkında başarı oranı iddiası yoktur. Ayrıntılı kapsam: [VALIDATION.md](docs/VALIDATION.md).
+Tests exercise real loopback HTTP and SQLite, with injected mocks for GitHub, X, embeddings, and Jev. They verify behavior and integration, not live model quality. See [validation scope](docs/VALIDATION.md) and the [tests](test/).
 
-Bir sonraki ürün adımı: kendi hesabınla salt okunur aktarım, belirli bir multilingual embedding modeli ve Jev anahtarıyla 20–50 gerçek arama sorusundan oluşan veri seti hazırlamak. Jev açık/kapalı ilk-5 bulma oranı, p50/p95 gecikme ve sorgu maliyeti ölçülür. Ardından OAuth, arayüz ve PostgreSQL/pgvector'a geçiş planlanabilir. İlk sürümde SQLite + uygulama içi hesaplama kurulumu basitleştirir; büyük arşiv/SaaS ölçeği hedeflemez.
+Development roles and file ownership are documented in [AGENTS.md](AGENTS.md). New development subagents use `gpt-6.1-sol` with `high` reasoning effort; defaults and role definitions live in `.codex/`. These development settings are separate from runtime `JEV_MODEL` and the configured embedding model.
 
-## Tek ana klasör ve paket
+## Source package
 
-Proje tek bir ana klasördür; kaynakları tek dosyada birleştirmez.
-
-```text
-bookmarkfinder/
-├── README.md / STATUS.md / AGENTS.md
-├── package.json
-├── .codex/                   # geliştirme modeli ve alt agent rolleri
-├── .env.example / .env        # .env yerel, pakete alınmaz
-├── .venv/                    # yerel Python paketleme ortamı
-├── scripts/                  # kurulum ve ZIP paketleme
-├── src/                      # Node backend ve runtime workerlar
-├── test/ / fixtures/ / docs/
-├── data/                     # yerel SQLite, pakete alınmaz
-└── dist/recall-mvp.zip        # oluşturulan paylaşım paketi
-```
+The project keeps separate source files in one main folder: `src/`, `test/`, `fixtures/`, `scripts/`, and `docs/`.
 
 ```sh
 npm run package
 ```
 
-Komut `.venv/bin/python scripts/package.py` üzerinden `dist/recall-mvp.zip` oluşturur. Pakette kaynaklar, örnek yapılandırma, testler ve belgeler bulunur; yerel `.env`, `.venv`, veritabanları ve önceki paketler bulunmaz. Paketi açtıktan sonra kendi ana klasöründe `npm run setup` çalıştır.
+This runs `.venv/bin/python scripts/package.py` and creates `dist/bookmarkfinder.zip` with a `bookmarkfinder/` root folder. It includes source, example configuration, tests, and documentation. Local credentials, data, virtual environments, and earlier archives are excluded. After extracting, run `npm run setup` inside the extracted folder.
+
+## License
+
+A license has not been selected yet.

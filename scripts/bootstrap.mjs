@@ -8,7 +8,7 @@ const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
 function main() {
   if (Number(process.versions.node.split('.')[0]) < 24) {
-    throw new Error('Recall requires Node.js 24 or newer. Install it and run npm run setup again.');
+    throw new Error('Bookmark Finder requires Node.js 24 or newer. Install it and run npm run setup again.');
   }
 
   const envPath = join(root, '.env');

@@ -12,7 +12,7 @@ async function demoEntries() {
 }
 async function main() {
   if (command === 'help') {
-    console.log('Recall: demo | serve [--demo] | search "sorgu" [--demo] | sync github|x | index | status | import dosya.json');
+    console.log('Bookmark Finder: demo | serve [--demo] | search "sorgu" [--demo] | sync github|x | index | status | import dosya.json');
     return;
   }
   const demo = command === 'demo' || args.includes('--demo');
@@ -23,7 +23,7 @@ async function main() {
   if (command === 'serve') {
     const server = makeServer({ orchestrator });
     await new Promise((resolve, reject) => { server.once('error', reject); server.listen(config.port, '127.0.0.1', resolve); });
-    console.log(`Recall ${demo ? 'DEMO (örnek veriler, harici API kapalı)' : 'yerel backend'}: http://127.0.0.1:${config.port}`);
+    console.log(`Bookmark Finder ${demo ? 'DEMO (örnek veriler, harici API kapalı)' : 'yerel backend'}: http://127.0.0.1:${config.port}`);
     console.log('İsteklerde X-Recall-Client: local başlığını kullan. Kapat: Ctrl+C.');
     const stop = async () => { server.close(); await orchestrator.drain(); store.close(); process.exit(0); };
     process.once('SIGINT', stop); process.once('SIGTERM', stop);

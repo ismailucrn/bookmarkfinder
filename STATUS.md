@@ -1,4 +1,4 @@
-# Project status
+# Bookmark Finder — project status
 
 Read this file, README.md, AGENTS.md and docs/VALIDATION.md when starting a new project chat. The canonical working directory is this repository root. Keep durable decisions here; never record credentials or local filesystem paths in tracked documentation.
 
@@ -23,10 +23,12 @@ No web frontend, OAuth connection/refresh UI, scheduled sync, multiuser server a
 
 ## Next steps
 
-1. Finalize product/repository name; create and connect the requested public GitHub repository.
+1. Select a license for the public repository; no license has been applied without a decision.
 2. Configure local GitHub read token, Jev key and embedding provider endpoint/model/key. No credentials in chats or Git history. X can follow as a second stage.
 3. Validate real read-only import, indexing and reranking.
 4. Evaluate Recall@5/MRR, Jev on/off, p50/p95 latency and provider cost against 20–50 real known-item queries.
 5. Add frontend/OAuth and production authentication as separately scoped milestones.
 
-The initial local Git snapshot records this backend foundation. Repository creation is pending final name selection.
+Public repository: https://github.com/ismailucrn/bookmarkfinder
+
+The initial local Git snapshot records the backend foundation. Product name: Bookmark Finder. Repository visibility: public. Local `main` tracks `origin/main` after the initial push. License selection remains pending.

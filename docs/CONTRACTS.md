@@ -1,4 +1,4 @@
-# Recall worker contracts
+# Bookmark Finder worker contracts
 
 Runtime: Node.js >=24 ES modules, built-in APIs only. No package dependencies.
 

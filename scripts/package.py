@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a source-only Recall ZIP with Python's standard library."""
+"""Build a source-only Bookmark Finder ZIP with Python's standard library."""
 import os
 from pathlib import Path
 import tempfile
@@ -7,7 +7,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = ROOT / "dist"
-OUTPUT_PATH = OUTPUT_DIR / "recall-mvp.zip"
+OUTPUT_PATH = OUTPUT_DIR / "bookmarkfinder.zip"
 EXCLUDED_DIRS = {
     ".git", ".venv", "venv", "env", "node_modules", "data", "dist",
     "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache",
@@ -37,7 +37,7 @@ def main():
     if OUTPUT_DIR.is_symlink():
         raise SystemExit("Refusing a symlinked dist directory.")
     OUTPUT_DIR.mkdir(exist_ok=True)
-    fd, temporary_name = tempfile.mkstemp(prefix=".recall-", suffix=".zip", dir=OUTPUT_DIR)
+    fd, temporary_name = tempfile.mkstemp(prefix=".bookmarkfinder-", suffix=".zip", dir=OUTPUT_DIR)
     os.close(fd)
     temporary_path = Path(temporary_name)
     count = 0
@@ -56,12 +56,12 @@ def main():
                     source = current / name
                     if excluded_file(name) or source.is_symlink() or not source.is_file():
                         continue
-                    archive.write(source, arcname=str(Path("recall") / source.relative_to(ROOT)))
+                    archive.write(source, arcname=str(Path("bookmarkfinder") / source.relative_to(ROOT)))
                     count += 1
         os.replace(temporary_path, OUTPUT_PATH)
     finally:
         temporary_path.unlink(missing_ok=True)
-    print("Created dist/recall-mvp.zip ({} source files; environments, data and secrets excluded).".format(count))
+    print("Created dist/bookmarkfinder.zip ({} source files; environments, data and secrets excluded).".format(count))
 
 
 if __name__ == "__main__":

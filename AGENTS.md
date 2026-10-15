@@ -1,4 +1,4 @@
-# Recall development agents
+# Bookmark Finder development agents
 
 The user explicitly requested an orchestrator and worker agents for both development and the product runtime. Read STATUS.md first for the current stage, pending work and verification limits. Use this directory as the local Codex project root; keep the deliverable in one main folder with separate source files.
 

@@ -44,3 +44,8 @@ Bu kontroller için anahtarlar yerel .env içinde yapılandırılır. Bir dizi g
 ## Kullanıcının seçtiği proje köküne taşıma
 
 Kaynaklar ana proje klasörü altında doğrulandı. `.env` içerikleri gösterilmeden korundu, `.codex` model ayarları doğrulandı, `.venv` yeni konumda oluşturuldu. Eski demo servisi durduruldu; SQLite backup API ile aktarılan veritabanının integrity_check sonucu `ok`. Yeni konumda tüm 65 test ve check/demo/paketleme kontrolleri geçti. Bu taşıma canlı API doğrulaması değildir.
+
+
+## Public repository preparation
+
+The project uses the descriptive name Bookmark Finder. Personal local paths were removed from tracked documentation, local secrets/data/environments and archives were verified excluded from Git, and an explicit source allowlist was reviewed before staging. After the user-facing naming changes, all 65 tests, check, demo and packaging checks passed. External-provider behavior remains mocked in the test suite. Repository: https://github.com/ismailucrn/bookmarkfinder.
